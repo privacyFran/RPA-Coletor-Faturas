@@ -149,27 +149,42 @@ class CPFLAutomation(BaseSiteAutomation):
     def _baixar_faturas_outras_instalacoes(self):
         try:
             logger.info(f"[{self.empresa}] Buscando outras instalações...")
-            # Go back to history if needed or stay on page if "Ver Débitos de Outras Instalações" is visible
+
             xpath_outras = "//*[contains(text(), 'Ver Débitos de Outras Instalações')]"
             btn_outras = self.wait_for_clickable(By.XPATH, xpath_outras)
+
             self.driver.execute_script("arguments[0].scrollIntoView(true);", btn_outras)
-            btn_outras.click()
-            
+            self.driver.execute_script("arguments[0].click();", btn_outras)
+
             time.sleep(5)
             # Find all "+" buttons to expand installations
             # Using a more generic class or text search if "+" is text
-            expand_buttons = self.driver.find_elements(By.XPATH, "//button[contains(., '+')] | //span[contains(., '+')]")
-            logger.info(f"[{self.empresa}] Encontradas {len(expand_buttons)} outras instalações.")
-            
-            for btn in expand_buttons:
+
+            xpath_expand = "//button[contains(., '+')] | //span[contains(., '+')]"
+
+            total = len(self.driver.find_elements(By.XPATH, xpath_expand))
+            logger.info(f"[{self.empresa}] Encontradas {total} instalações.")
+
+            for i in range(total):
                 try:
+                    expand_buttons = self.driver.find_elements(By.XPATH, xpath_expand)
+                    btn = expand_buttons[i]
+
+                    # scroll + click seguro
                     self.driver.execute_script("arguments[0].scrollIntoView(true);", btn)
-                    btn.click()
-                    time.sleep(2)
+                    self.driver.execute_script("arguments[0].click();", btn)
+
+                    
+                    self.wait.until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='checkbox']"))
+                    )
+
                     self._processar_download_fatura()
+
                 except Exception as inner_e:
-                    logger.warning(f"[{self.empresa}] Erro ao processar uma das outras instalações: {inner_e}")
+                    logger.warning(f"[{self.empresa}] Erro ao processar instalação {i}: {inner_e}")
                     continue
+
         except Exception as e:
             logger.error(f"[{self.empresa}] Erro ao processar outras instalações: {e}")
 
